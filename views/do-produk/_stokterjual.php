@@ -1,0 +1,339 @@
+<?php
+
+use app\models\DoProdukT;
+use app\models\InventoriT;
+use app\models\KategoriT;
+use yii\helpers\Html;
+use kartik\dynagrid\DynaGrid;
+use kartik\grid\GridView;
+use yii\bootstrap5\Modal;
+use yii\helpers\Url;
+use app\models\SupplierT;
+use app\models\MerekT;
+use app\models\ProdukT;
+use app\models\StokJenisT;
+use yii\helpers\ArrayHelper;
+// on your view layout file
+/* use kartik\icons\FontAwesomeAsset;
+FontAwesomeAsset::register($this); */
+//$do = $do;
+$this->title = 'Stok Terjual';
+
+$margin = [];
+if(Yii::$app->user->identity->divisi < 2){
+$margin = [
+    'label' => 'Margin',
+    'value'=>function ($model, $key, $index, $widget) { //diffrent controller
+        $hpp = $model->penjualan_jml*$model->do_harga;
+        $val = $model->penjualan_jml*$model->penjualan_harga;
+        $mrg = $val - $hpp;
+        return $mrg;
+    },
+    'hAlign'=>'right', 
+    'vAlign'=>'middle',
+    'width'=>'80px',
+    'format'=>['decimal', 2],
+    'pageSummary'=>true,
+    'filter'=>false
+];
+}else{
+    $margin = [];
+}
+
+$columns = [
+    ['class'=>'kartik\grid\SerialColumn', 'order'=>DynaGrid::ORDER_FIX_LEFT],
+    [
+        'label'=>'Img',
+        'value'=>function ($model, $key, $index, $widget) { //diffrent controller
+            if($model->do_produk_origin > 0){
+                $modProdO = DoProdukT::findOne($model->do_produk_origin);
+                if($modProdO != null){
+                    return '<img src="'.$modProdO->url.'" width="100" />';
+                }
+            }else{
+                return '<img src="'.$model->url.'" width="100" />';
+            }
+            
+        },
+        'hAlign'=>'center', 
+        'vAlign'=>'middle',
+        'width'=>'80px',
+        'format'=>'raw'
+    ],
+    [
+        'label' => 'Batch',
+        'attribute'=>'batch', 
+        'value'=>function ($model, $key, $index, $widget) { //diffrent controller
+            $controller = Yii::$app->controller;
+            $ud = 'index.php?r=dopembelian/update&do=' . $model->do;
+            if($model->do_produk_origin > 0){
+                return '<a class="btn btn-sm btn-primary btn-block" href="'. $ud . '">'. $model->produk . '-' . $model->do_produk_origin. '</a>';
+            }else{
+                return '<a class="btn btn-sm btn-primary btn-block" href="'. $ud . '">'. $model->produk . '-' . $model->do_produk. '</a>';
+            }
+        },
+        'hAlign'=>'center', 
+        'vAlign'=>'middle',
+        'width'=>'100px',
+        'format'=>'raw',
+        'filter'=>true
+    ],
+    [
+        'label' => 'Penjualan',
+        'attribute'=>'faktur', 
+        'hAlign'=>'center', 
+        'vAlign'=>'middle',
+        'width'=>'100px',
+        'group'=>true,  // enable grouping
+        'filter'=>true
+    ],
+    [
+        'attribute'=>'penjualan_tgl',
+        'width'=>'150px',
+        'options' => [
+            'format' => 'YYYY-MM-DD',
+            ],        
+        'filterType' => GridView::FILTER_DATE_RANGE,
+        'filterWidgetOptions' => ([       
+          'attribute' => 'penjualan_tgl',
+          'presetDropdown' => true,
+          'convertFormat' => false,
+          'pluginOptions' => [
+            'separator' => ' - ',
+            'format' => 'YYYY-MM-DD',
+            'locale' => [
+                  'format' => 'YYYY-MM-DD'
+              ],
+          ],
+          'pluginEvents' => [
+            "apply.daterangepicker" => "function() { apply_filter('penjualan_tgl') }",
+          ],
+        ])
+    ],
+    [
+        'attribute'=>'produk',
+        'value'=>'produk_nama',
+        'hAlign'=>'left', 
+        'vAlign'=>'middle',
+        'width'=>'150px',
+        'filterType'=>GridView::FILTER_SELECT2,
+        'filter'=>ArrayHelper::map(ProdukT::find()->orderBy('nama')->asArray()->all(), 'produk', 'nama'), 
+        'filterWidgetOptions'=>[
+            'pluginOptions'=>['allowClear'=>true],
+        ],
+        'filterInputOptions'=>['placeholder'=>'Pilih'],
+        'group'=>false,  // enable grouping
+    ],
+    [
+        'attribute'=>'stok_jenis_nama',
+        'value'=>'stok_jenis_nama',
+        'hAlign'=>'left', 
+        'vAlign'=>'middle',
+        'width'=>'150px',
+        'filterType'=>GridView::FILTER_SELECT2,
+        'filter'=>ArrayHelper::map(StokJenisT::find()->orderBy('stok_jenis_nama ASC')->asArray()->all(), 'stok_jenis_nama', 'stok_jenis_nama'), 
+        'filterWidgetOptions'=>[
+            'pluginOptions'=>['allowClear'=>true],
+        ],
+        'filterInputOptions'=>['placeholder'=>'Pilih'],
+    ],
+    [
+        'attribute'=>'kategori_nama',
+        'value'=>'kategori_nama',
+        'hAlign'=>'left', 
+        'vAlign'=>'middle',
+        'width'=>'150px',
+        'filterType'=>GridView::FILTER_SELECT2,
+        'filter'=>ArrayHelper::map(KategoriT::find()->orderBy('kategori_nama')->asArray()->all(), 'kategori_nama', 'kategori_nama'), 
+        'filterWidgetOptions'=>[
+            'pluginOptions'=>['allowClear'=>true],
+        ],
+        'filterInputOptions'=>['placeholder'=>'Pilih'],
+    ],
+    [
+        'attribute'=>'nama',
+        'value'=>'nama',
+        'hAlign'=>'left', 
+        'vAlign'=>'middle',
+        'width'=>'150px',
+        'filterType'=>GridView::FILTER_SELECT2,
+        'filter'=>ArrayHelper::map(MerekT::find()->orderBy('nama')->asArray()->all(), 'nama', 'nama'), 
+        'filterWidgetOptions'=>[
+            'pluginOptions'=>['allowClear'=>true],
+        ],
+        'filterInputOptions'=>['placeholder'=>'Pilih'],
+    ],
+    [
+        'label' => 'Lokasi',
+        'attribute'=>'kode',
+        'value'=>function ($model, $key, $index, $widget) { //diffrent controller
+            if($model->rakitan > 0){
+                return $model->kode . '-' . $model->rakitan;
+            }else{
+                return $model->kode;
+            }
+        },
+        'hAlign'=>'center', 
+        'vAlign'=>'middle',
+        'width'=>'100px',
+        'filterType'=>GridView::FILTER_SELECT2,
+        'filter'=>ArrayHelper::map(InventoriT::find()->orderBy('kode')->asArray()->all(), 'kode', 'kode'), 
+        'filterWidgetOptions'=>[
+            'pluginOptions'=>['allowClear'=>true],
+        ],
+        'filterInputOptions'=>['placeholder'=>'Pilih'],
+        'pageSummary'=>false,
+        'group'=>false,  // enable grouping
+    ],
+    [
+        'label' => 'Stok Asal',
+        'value'=>function ($model, $key, $index, $widget) { //diffrent controller
+            if($model->do_produk_origin > 0){
+                $modProdO = DoProdukT::findOne($model->do_produk_origin);
+                if($modProdO != null){
+                    return $modProdO->do_jml;
+                }
+            }else{
+                return $model->do_jml;
+            }
+            
+        },
+        'hAlign'=>'right', 
+        'vAlign'=>'middle',
+        'width'=>'30px',
+        'filter'=>false
+    ],
+    [
+        'label' => 'Sisa Stok Asal',
+        'value'=>function ($model, $key, $index, $widget) { //diffrent controller
+            if($model->do_produk_origin > 0){
+                $modProdO = DoProdukT::findOne($model->do_produk_origin);
+                if($modProdO != null){
+                    return $modProdO->jml_now;
+                }
+            }else{
+                return $model->jml_now;
+            }
+            
+        },
+        'hAlign'=>'right', 
+        'vAlign'=>'middle',
+        'width'=>'30px',
+        'filter'=>false
+    ],
+    [
+        'label' => 'Sold',
+        'attribute'=>'penjualan_jml', 
+        'hAlign'=>'right', 
+        'vAlign'=>'middle',
+        'width'=>'30px',
+        'format'=>['decimal', 0],
+        'pageSummary'=>true,
+        'filter'=>false
+    ],
+    [
+        'label' => '@HPP',
+        'attribute'=>'do_harga', 
+        'hAlign'=>'right', 
+        'vAlign'=>'middle',
+        'width'=>'80px',
+        'format'=>['decimal', 2],
+        'pageSummary'=>false,
+        'filter'=>false
+    ],
+    [
+        'label'=>'Value HPP', 
+        'value'=>function ($model, $key, $index, $widget) { //diffrent controller
+            return $model->penjualan_jml*$model->do_harga;
+        },
+        'hAlign'=>'right', 
+        'vAlign'=>'middle',
+        'width'=>'80px',
+        'format'=>['decimal', 2],
+        'pageSummary'=>true,
+        'filter'=>false
+    ],
+    [
+        'label'=>'Value Jual', 
+        'value'=>function ($model, $key, $index, $widget) { //diffrent controller
+            return $model->penjualan_jml*$model->penjualan_harga;
+        },
+        'hAlign'=>'right', 
+        'vAlign'=>'middle',
+        'width'=>'80px',
+        'format'=>['decimal', 2],
+        'pageSummary'=>true,
+        'filter'=>false
+    ],
+    $margin,
+    /* [
+        'class'=>'kartik\grid\ActionColumn',
+        'width'=>'100px',
+        'hAlign'=>'center', 
+        'contentOptions' => [],
+        'header'=>'Actions',
+        'template' => '{delete}',
+        'buttons'=>[
+            'delete' => function($url, $model) { 
+                 if($model->do_produk !== null){
+
+                 $ud = 'index.php?r=do-produk/delete&do_produk=' . $model->do_produk;
+                     return '<div class="d-grid gap-0"><a class="btn btn-light" value="'. $ud . '"><i class="align-middle" data-feather="trash"></i> Hapus</a></div>';
+                 }else{
+                     return null;
+                 }
+             },
+        ],
+        'dropdown'=>false,
+        'order'=>DynaGrid::ORDER_FIX_RIGHT
+    ], */
+];
+echo DynaGrid::widget([
+    'columns' => $columns,
+    'theme'=>'panel-info',
+    'showPersonalize'=>true,
+    'storage' => 'session',
+    'gridOptions'=>[
+        'dataProvider'=>$dataProvider,
+        'filterModel'=>$searchModel,
+        'showPageSummary'=>true,
+        'pageSummaryRowOptions'=>['class' => 'kv-page-summary table-light'],
+        'floatHeader'=>true,
+        'pjax'=>false,
+        'responsiveWrap'=>false,
+        'panel'=>[
+            'heading'=>'<h3 class="panel-title text-white"><i class="align-middle" data-feather="filter"></i> Stok Terjual</h3>',
+            /* 'before' =>  '<div style="padding-top: 7px;"><em>* Klik Tambah untuk buat Stok</em></div>', */
+            'after' => false
+        ],
+        'toolbar' =>  [
+            ['content'=>
+            //'<a class="btn btn-sm btn-success modalButton" value="'.Url::to(['create']).'"><i class="fas fa-plus"></i> Tambah Stok</a>  ' . 
+                Html::a('<i class="fas fa-redo-alt"></i>', [''], ['data-pjax'=>0, 'class' => 'btn btn-outline-secondary', 'title'=>'Reset Grid'])
+            ],
+            ['content'=>'{dynagridFilter}{dynagridSort}{dynagrid}'],
+            '{export}',
+            '{toggleData}',
+        ]
+    ],
+    'options'=>['id'=>'dynagrid-stokterjual'] // a unique identifier is important
+]);
+?>
+
+<?php
+$device = Yii::$app->params['devicedetect'];
+if($device['isDesktop'] == true){?>
+<script async='async' type='text/javascript'>
+    $(document).ready(function() {
+
+    var element2, name2, arr2;
+    element2 = document.getElementById("sidebar");
+    name2 = "collapsed";
+    arr2 = element2.className.split(" ");
+    if (arr2.indexOf(name2) == -1) {
+        element2.className += " " + name2;
+    }
+        
+    });
+</script>
+<?php } ?>
